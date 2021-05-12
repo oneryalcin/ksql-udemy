@@ -1,4 +1,6 @@
-# Setup
+# Section 3: ksqlDB and KSQL Setup
+## Lecture 5: KSQL Setup - Mac / Linux / Windows
+
 - install Java (`sudo apt install openjdk-11-jre-headless`)
 - check version (`java -version`)
 - download Confluent platform from https://www.confluent.io/download/
@@ -14,7 +16,7 @@ export PATH=${PATH}:/opt/confluent/bin
 export CONFLUENT_HOME=/opt/confluent
 ```
 
-# Confluent CLI changes from version 5.3 and 6.0
+## Confluent CLI changes from version 5.3 and 6.0
 The _Confluent CLI_ changed significantly in version 5.3 and 6.0.  The most important change is the inclusion of the `local` parameter when interacting with a local development environment. From version 6.0 you'll need to include the `services` parameter
 
 For example, to start the ksql-server
@@ -23,22 +25,14 @@ For example, to start the ksql-server
 - From 5.3 : `confluent local start ksql-server` 
 - From 6.0 : `confluent local services ksql-server start` 
 
-## Prior to 5.3 - install the Confluent CLI
-Only required in older versions of Confluent that did not come with the Confluent CLI
-- install the Confluent CLI (see https://docs.confluent.io/current/cli/installing.html#scripted-installation)
-    - `curl -L https://cnfl.io/cli | sh -s -- -b /opt/confluent/bin`
+## Lecture 7: KSQL Command Line
 
-# Create a topic
-```
-kafka-topics --zookeeper localhost:2181 --create --partitions 1 --replication-factor 1 --topic USERS
-```
-
-Or you can use the more modern syntax
+### Create a topic
 ```
 kafka-topics --bootstrap-server localhost:9092 --create --partitions 1 --replication-factor 1 --topic USERS
 ```
 
-# Get started - KSQL Command Line
+### Get started - KSQL Command Line
 
 At UNIX prompt
 ```
@@ -64,8 +58,10 @@ print 'USERS' from beginning limit 2;
 print 'USERS' from beginning interval 2 limit 2 ;
 
 ```
+# Section 4: ksqlDB and KSQL Basics
+## Lecture 8: Our first KSQL Stream
 
-# Get started - Create a stream with CSV
+Get started - Create a stream with CSV
 
 ### Special note for 5.4 onwards (ksqlDB)
 
@@ -109,12 +105,11 @@ show topics;
 ```
 
 
-
-# Create a stream with JSON
+## Lecture 9: Create a Stream with JSON
 
 At UNIX prompt
 ```
-kafka-topics --zookeeper localhost:2181 --create --partitions 1 --replication-factor 1 --topic USERPROFILE
+kafka-topics --bootstrap-server localhost:9092 --create --partitions 1 --replication-factor 1 --topic USERPROFILE
 
 kafka-console-producer --broker-list localhost:9092 --topic USERPROFILE << EOF
 {"userid": 1000, "firstname":"Alison", "lastname":"Smith", "countrycode":"GB", "rating":4.7}
@@ -140,13 +135,11 @@ Alison | Smith | GB | 4.7
 ```
 
 
-# Manipulate a stream
-
-## Run a data gen
+## Lecture 10: KSQL Datagen - Generating Streams
 
 At UNIX prompt
 ```
-ksql-datagen schema=./datagen/userprofile.avro format=json topic=USERPROFILE key=userid msgRate=1 iterations=100
+ksql-datagen schema=./datagen/userprofile.avro format=json topic=USERPROFILE key=userid msgRate=1 iterations=1000
 ```
 
 At KSQL prompt
@@ -156,7 +149,7 @@ print 'USERPROFILE' interval 5;
 ```
 
 
-## Manipulate a stream
+## Lecture 11: Manipulate a Stream
 At KSQL prompt
 
 ```
@@ -165,8 +158,6 @@ ksql> describe userprofile;
 Name                 : USERPROFILE
  Field       | Type
 -----------------------------------------
- ROWTIME     | BIGINT           (system)  <-- NOTE
- ROWKEY      | VARCHAR(STRING)  (system)  <-- NOTE
  USERID      | INTEGER
  FIRSTNAME   | VARCHAR(STRING)
  LASTNAME    | VARCHAR(STRING)
@@ -184,7 +175,9 @@ select  TIMESTAMPTOSTRING(rowtime, 'dd/MMM HH:mm') as createtime, firstname + ' 
 from userprofile emit changes;
 ```
 
-# Create a stream from a stream
+
+## Lecture 12: Streams from streams and functions
+Create a stream from a stream
 At KSQL prompt
 
 ```
@@ -232,11 +225,12 @@ list streams;
 drop stream IF EXISTS user_profile_pretty DELETE TOPIC;
 ```
 
-# Create a table
+## Lecture 13: ksqlDB Tables
+Create a table
 
 At UNIX prompt
 ```
-kafka-topics --zookeeper localhost:2181 --create --partitions 1 --replication-factor 1 --topic COUNTRY-CSV
+kafka-topics --bootstrap-server localhost:9092 --create --partitions 1 --replication-factor 1 --topic COUNTRY-CSV
 
 -- version 5.5 and later
 kafka-console-producer --broker-list localhost:9092 --topic COUNTRY-CSV --property "parse.key=true"  --property "key.separator=:" << EOF
@@ -271,7 +265,7 @@ select countrycode, countryname from countrytable where countrycode='GB' emit ch
 select countrycode, countryname from countrytable where countrycode='FR' emit changes;
 ```
 
-# Update a table
+### Update a table
 One record updated (UK->United Kingdom), one record added (FR)
 
 At UNIX prompt
@@ -293,7 +287,9 @@ select countrycode, countryname from countrytable where countrycode='GB' emit ch
 select countrycode, countryname from countrytable where countrycode='FR' emit changes;
 ```
 
-# Join
+# Section 5: ksqlDB and KSQL Intermediate
+## Lecture 14: KSQL Joins
+
 Join user stream to country table
 
 At KSQL prompt
@@ -314,8 +310,10 @@ left join COUNTRYTABLE ct on ct.countrycode=up.countrycode;
 
 select description from up_joined emit changes;
 ```
-# Pull Queries
 
+## Lecture 15: Pull Queries
+
+Pull Queries
 
 **Pull Query** - new in ksqlDB (5.4 onwards)
 
@@ -347,20 +345,25 @@ INSERT INTO driverLocations (driverId, countrycode, city, driverName) VALUES ('5
 select countrycode, numdrivers from countryDrivers where countrycode='AU';
 ```
 
-# Kafka Connect with ksqlDB
-To run Postgres and Confluent platform
+## Lecture 16: Kafka Connect with ksqlDB
+Kafka Connect with ksqlDB. You will be running this example using docker. First we need to stop the local Confluent platform
+```
+confluent local services stop
+```
+
+Now, start Postgres and Confluent platform together using docker
 ```
 docker-compose up -d
 ```
 
 
-## Start ksqlDB KSQL CLI
+Start ksqlDB KSQL CLI
 ```
 docker-compose exec  ksqldb-cli ksql http://ksqldb-server:8088
 ```
 
 
-## Kafka Connect
+Kafka Connect
 
 ```
 cat postgres-setup.sql
@@ -396,7 +399,9 @@ In another window, insert a new database row
 docker exec -it postgres psql -U postgres -c "INSERT INTO carusers (username) VALUES ('Derek');"
 ```
 
-# Data Formats
+## Lecture 17: Data Encodings
+Data Formats
+
 Imagine a _complaints_ stream of unhappy customers.  Explore the different data formats (CSV, JSON, AVRO)
 
 | Column         | AVRO Type | KSQL Type |
@@ -406,11 +411,11 @@ Imagine a _complaints_ stream of unhappy customers.  Explore the different data 
 | trip_cost      | float     | DOUBLE    |
 | new_customer   | boolean   | BOOLEAN   |
 
-## CSV Delimited
+## Lecture 18: CSV Delimited Data
 
 At UNIX prompt
 ```
-kafka-topics --zookeeper localhost:2181 --create --partitions 1 --replication-factor 1 --topic COMPLAINTS_CSV
+kafka-topics --bootstrap-server localhost:9092 --create --partitions 1 --replication-factor 1 --topic COMPLAINTS_CSV
 
 kafka-console-producer --broker-list localhost:9092 --topic COMPLAINTS_CSV << EOF
 Alice, Late arrival, 43.10, true
@@ -436,12 +441,10 @@ Alice, Bob and Carole, Bad driver, 43.10, true
 EOF
 ```
 
-
-## JSON
-
-At UNIX prompt
+## Lecture 19: JSON Data
+JSON - At UNIX prompt
 ```
-kafka-topics --zookeeper localhost:2181 --create --partitions 1 --replication-factor 1 --topic COMPLAINTS_JSON
+kafka-topics --bootstrap-server localhost:9092 --create --partitions 1 --replication-factor 1 --topic COMPLAINTS_JSON
 
 kafka-console-producer --broker-list localhost:9092 --topic COMPLAINTS_JSON << EOF
 {"customer_name":"Alice, Bob and Carole", "complaint_type":"Bad driver", "trip_cost": 22.40, "new_customer": true}
@@ -457,7 +460,7 @@ select * from complaints_json emit changes;
 ```
 
 
-## JSON - experience with bad data
+### JSON - experience with bad data
 
 At UNIX prompt
 
@@ -476,11 +479,11 @@ Now look at the _KSQL Server log_.  We can see bad data is noticed; but hidden i
 ```
 
 
-## AVRO
+## Lecture 20: Avro Data
 
 At UNIX prompt
 ```
-kafka-topics --zookeeper localhost:2181 --create --partitions 1 --replication-factor 1 --topic COMPLAINTS_AVRO
+kafka-topics --bootstrap-server localhost:9092 --create --partitions 1 --replication-factor 1 --topic COMPLAINTS_AVRO
 
 kafka-avro-console-producer  --broker-list localhost:9092 --topic COMPLAINTS_AVRO \
 --property value.schema='
@@ -507,7 +510,7 @@ describe extended complaints_avro;
  ```      
 
 
-## AVRO - experience with bad data
+### AVRO - experience with bad data
 
 At UNIX prompt - note bad data is noted at serialization time
 
@@ -528,7 +531,7 @@ kafka-avro-console-producer  --broker-list localhost:9092 --topic COMPLAINTS_AVR
 EOF
 ```
 
-## AVRO Schema Evolution
+## Lecture 21: Avro Schema Evolution
 
 At UNIX prompt
 ```
@@ -568,8 +571,6 @@ ksql> describe complaints_avro;
 Name                 : COMPLAINTS_AVRO
  Field          | Type
 --------------------------------------------
- ROWTIME        | BIGINT           (system)
- ROWKEY         | VARCHAR(STRING)  (system)
  CUSTOMER_NAME  | VARCHAR(STRING)
  COMPLAINT_TYPE | VARCHAR(STRING)
  TRIP_COST      | DOUBLE
@@ -584,8 +585,6 @@ ksql> describe complaints_avro_v2;
 Name                 : COMPLAINTS_AVRO_V2
  Field           | Type
 ---------------------------------------------
- ROWTIME         | BIGINT           (system)
- ROWKEY          | VARCHAR(STRING)  (system)
  CUSTOMER_NAME   | VARCHAR(STRING)
  COMPLAINT_TYPE  | VARCHAR(STRING)
  TRIP_COST       | DOUBLE
@@ -596,8 +595,7 @@ Name                 : COMPLAINTS_AVRO_V2
 ```
 
 
-
-# Nested JSON
+## Lecture 22: Nested JSON
 
 Imagine we have data like this
 ```
@@ -619,7 +617,7 @@ Imagine we have data like this
 
 At UNIX prompt
 ```
-kafka-topics --zookeeper localhost:2181 --create --partitions 1 --replication-factor 1 --topic WEATHERNESTED
+kafka-topics --bootstrap-server localhost:9092 --create --partitions 1 --replication-factor 1 --topic WEATHERNESTED
 
 cat demo-weather.json | kafka-console-producer --broker-list localhost:9092 --topic WEATHERNESTED
 ```
@@ -643,7 +641,7 @@ WITH (KAFKA_TOPIC='WEATHERNESTED', VALUE_FORMAT='JSON');
 SELECT city->name AS city_name, city->country AS city_country, city->latitude as latitude, city->longitude as longitude, description, rain from weather emit changes;   
 ```
 
-# Build rekeyed table
+## Lecture 23: Build a rekeyed table
 - create a table based on rekeyed `city` field from `weather` stream
 - At KSQL prompt
 
@@ -718,13 +716,13 @@ select * from weathernow where city_name = 'San Diego' emit changes;
 
 
 
-# Repartition
+## Lecture 24: Repartition a Stream
 
 _When you use KSQL to join streaming data, you must ensure that your streams and tables are co-partitioned, which means that input records on both sides of the join have the same configuration settings for partitions._
 
 At UNIX prompt
 ```
-kafka-topics --zookeeper localhost:2181 --create --partitions 2 --replication-factor 1 --topic DRIVER_PROFILE
+kafka-topics --bootstrap-server localhost:9092 --create --partitions 2 --replication-factor 1 --topic DRIVER_PROFILE
 
 kafka-console-producer --broker-list localhost:9092 --topic DRIVER_PROFILE << EOF
 {"driver_name":"Mr. Speedy", "countrycode":"AU", "rating":2.4}
@@ -757,8 +755,8 @@ from DRIVERPROFILE_REKEYED dp2
 left join COUNTRYTABLE ct on ct.countrycode=dp2.countrycode emit changes;    
 ```
 
-
-# Mergin Streams; Concat Topics with INSERT
+## Lecture 25: Merging Streams
+Merging Streams; Concat Topics with INSERT
 
 - create stream of requested rides in Europe using data gen
 - create stream of requested rides in USA using data gen
@@ -767,9 +765,9 @@ left join COUNTRYTABLE ct on ct.countrycode=dp2.countrycode emit changes;
 At UNIX prompt
 
 ```
-ksql-datagen schema=./datagen/riderequest-europe.avro  format=avro topic=riderequest-europe key=rideid msgRate=1 iterations=100
+ksql-datagen schema=./datagen/riderequest-europe.avro  format=avro topic=riderequest-europe key=rideid msgRate=1 iterations=1000
 
-ksql-datagen schema=./datagen/riderequest-america.avro format=avro topic=riderequest-america key=rideid msgRate=1 iterations=100
+ksql-datagen schema=./datagen/riderequest-america.avro format=avro topic=riderequest-america key=rideid msgRate=1 iterations=1000
 ```
 
 At KSQL prompt
@@ -794,8 +792,7 @@ select * from rr_world emit changes;
 
 
 
-
-# Windows
+## Lecture 26: Windowing
 - how many requests are arriving each time period
 - At KSQL prompt
 ```
@@ -829,8 +826,7 @@ emit changes;
 ```
 
 
-
-# Geospacial
+## Lecture 27: Geospatial
 - create stream - distance of car to waiting rider
 - At KSQL prompt
 
@@ -877,12 +873,14 @@ Grace is at (50,-1) and is travelling 138 km to London where it is heavy rain
 ```
 
 
-# UDF - Build and deploy KSQL User Defined Anomoly Functions
-- write a UDF to calculare drive time based on
+# Section 6: ksqlDB and KSQL Extensions - UDF & UDAF
+## Lecture 28: Extending KSQL - UDF / UDAF
+
+UDF - Build and deploy KSQL User Defined Anomoly Functions - write a UDF to calculare drive time based on
   - distance to travel
   - weather conditions
 
-## Compile Code to Create Anomoly Functions
+### Compile Code to Create Anomoly Functions
 
 - Have a look at the file `java/src/main/java/com/vsimon/kafka/streams/TaxiWait.java`
 - If you don't want to compile the code; just copy the JAR from `java/pre-compiled/ksql-udf-taxi-1.0.jar`
@@ -893,7 +891,7 @@ mvn clean package
 ls target/ksql-udf-taxi-1.0.jar
 ```
 
-## Deploy KSQL User Defined Functions
+### Deploy KSQL User Defined Functions
 
 Find the location of your extension directory.  From KSQL
 ```
@@ -925,7 +923,7 @@ confluent local services ksql-server start
 ```
 
 
-## Check KSQL User Defined Functions Available
+### Check KSQL User Defined Functions Available
 
 Start `ksql` client and verify 
 
@@ -954,7 +952,8 @@ Variations  :
 ```
 
 
-## Use the UDF
+## Lecture 29: Using the UDF / UDAF
+Use the UDF
 
 
 ```
@@ -978,3 +977,234 @@ Heidi will be waiting 14 minutes for their trip of 358 km to Bristol where it is
 Bob will be waiting 4 minutes for their trip of 218 km to Manchester where it is SUNNY
 Frank will be waiting 15 minutes for their trip of 193 km to London where it is heavy rain
 ```
+
+# Section 7: ksqlDB and KSQL in Production
+
+## Lecture 30: Moving to Productions-Headless for KSQL
+_Headless_ KSQL server cluster is *not* aware of anys streams or tables you defined in other (interactive) KSQL clusters.
+
+
+```
+confluent local services ksql-server stop
+
+/opt/confluent/bin/ksql-server-start /opt/confluent/etc/ksqldb/ksql-server.properties  --queries-file ./where-is-bob.ksql  
+
+# show CLI does not work
+ksql
+
+# check if BOB topic exists
+kafka-topics --zookeeper localhost:2181 --list --topic BOB
+
+kafka-avro-console-consumer --bootstrap-server localhost:9092 --topic BOB 
+```
+
+
+## Lecture 31: Explain Plan
+Explain
+```
+create stream my_stream 
+as select firstname 
+from userprofile; 
+
+show queries;
+
+explain CSAS_MY_STREAM_1;
+
+
+create table my_table 
+as select firstname, count(*) as cnt 
+from userprofile 
+group by firstname;
+
+show queries;
+
+explain CTAS_MY_TABLE_0;
+```
+
+### Kafka Streams Topology Visualizer
+_Converts an ASCII Kafka Topology description into a hand drawn diagram._
+
+- See https://zz85.github.io/kafka-streams-viz/
+
+## Lecture 32: Scaling and Load Balancing
+Multi Server with docker
+
+```
+docker-compose  -f docker-compose-prod.yml up -d 
+ksql-datagen schema=./datagen/userprofile.avro format=json topic=USERPROFILE key=userid maxInterval=1000 iterations=100000
+```
+
+In KSQL
+```
+
+CREATE STREAM userprofile (userid INT, firstname VARCHAR, lastname VARCHAR, countrycode VARCHAR, rating DOUBLE) 
+  WITH (VALUE_FORMAT = 'JSON', KAFKA_TOPIC = 'USERPROFILE');  
+
+create stream up_lastseen as 
+SELECT TIMESTAMPTOSTRING(rowtime, 'dd/MMM HH:mm:ss') as createtime, firstname
+from userprofile;  
+```
+```
+kafka-console-consumer --bootstrap-server localhost:9092  --topic UP_LASTSEEN 
+
+
+docker-compose -f docker-compose-prod.yml ps
+
+# stop 1
+docker-compose -f docker-compose-prod.yml stop ksql-server-1
+
+# re-start 1
+docker-compose -f docker-compose-prod.yml start ksql-server-1
+
+# stop 2
+docker-compose -f docker-compose-prod.yml stop ksql-server-2
+
+# stop 1
+docker-compose -f docker-compose-prod.yml stop ksql-server-1
+
+# start 2
+docker-compose -f docker-compose-prod.yml start ksql-server-1
+
+# start 1
+docker-compose -f docker-compose-prod.yml start ksql-server-1
+```
+
+
+## Lecture 33: Configuration Settings
+
+Understanding settings
+
+```
+confluent stop
+confluent destroy
+
+cd /opt/confluent/etc/ksql
+vi ksql-server.properties
+
+# add this line anywhere in file
+ksql.service.id=myservicename
+
+confluent start ksql-server
+```
+
+Start KSQL 
+```
+
+LIST PROPERTIES;
+
+ Property                                               | Default override | Effective Value
+---------------------------------------------------------------------------------------------------
+ ksql.schema.registry.url                               | SERVER           | http://localhost:8081
+ ksql.streams.auto.offset.reset                         | SERVER           | latest
+ ksql.service.id                                        | SERVER           | myservicename          <-- *** Note: this is the one we changed
+
+SET 'auto.offset.reset'='earliest';
+
+LIST PROPERTIES;
+
+
+ Property                                               | Default override | Effective Value
+----------------------------------------------------------------------------------------------------
+ ksql.schema.registry.url                               | SERVER           | http://localhost:8081
+ ksql.streams.auto.offset.reset                         | SESSION          | earliest                <-- *** Note both the override and Value cahnges
+ ksql.service.id                                        | SERVER           | myservicename          
+```
+
+
+## Lecture 34: State Stores
+
+
+
+
+
+## State Stores
+
+Start KSQL 
+```
+LIST PROPERTIES;
+
+# Look for ksql.streams.state.dir
+
+ Property                                               | Default override | Effective Value
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ ksql.streams.state.dir                                 | SERVER           | /var/folders/1p/3whlrkzx4bs3fkd55_600x4c0000gp/T/confluent.V2kB1p2N/ksql-server/data/kafka-streams
+```
+
+At UNIX
+```
+ksql-datagen schema=./datagen/userprofile.avro format=json topic=USERPROFILE key=userid maxInterval=5000 iterations=1000
+```
+
+At KSQL
+```
+CREATE STREAM userprofile (userid INT, firstname VARCHAR, lastname VARCHAR, countrycode VARCHAR, rating DOUBLE) \
+  WITH (VALUE_FORMAT = 'JSON', KAFKA_TOPIC = 'USERPROFILE');
+```
+
+At UNIX
+```
+# note: this will show nothing
+find /var/folders/1p/3whlrkzx4bs3fkd55_600x4c0000gp/T/confluent.V2kB1p2N/ksql-server/data/kafka-streams -type f 
+```
+
+Run a stateful operation, which should require RocksDB to persist to disk
+
+```
+select countrycode, count(*) from userprofile group by countrycode;
+```
+
+At UNIX
+```
+# note: this will now show files
+find /var/folders/1p/3whlrkzx4bs3fkd55_600x4c0000gp/T/confluent.V2kB1p2N/ksql-server/data/kafka-streams -type f 
+```
+
+
+
+
+
+
+### Complex  State Stores example
+
+```
+set 'ksql.sink.partitions' = '1';
+
+kafka-topics --bootstrap-server localhost:9092 --create --partitions 1 --replication-factor 1 --topic userrequests
+kafka-topics --bootstrap-server localhost:9092 --create --partitions 1 --replication-factor 1 --topic browsertype
+kafka-topics --bootstrap-server localhost:9092 --create --partitions 1 --replication-factor 1 --topic location
+kafka-topics --bootstrap-server localhost:9092 --create --partitions 1 --replication-factor 1 --topic cartype
+
+create table browsertype (browser_code bigint, browsername varchar) with (kafka_topic='browsertype', value_format='json', key='browser_code');
+
+create table location (location_code bigint, locationname varchar) with (kafka_topic='location', value_format='json', key='location_code');
+
+create table cartype (car_code bigint, carname varchar) with (kafka_topic='cartype', value_format='json', key='car_code');
+
+
+create stream userrequests (browser_code bigint, location_code bigint, car_code bigint, silly varchar) with (kafka_topic='userrequests', value_format='json');
+
+create stream user_browser as select us.LOCATION_CODE, us.CAR_CODE, us.silly, bt.browsername from userrequests us left join browsertype bt on bt.browser_code=us.browser_code;
+
+
+create stream user_browser_location as select ub.CAR_CODE, ub.silly, ub.browsername, l.locationname from user_browser ub left join location l on ub.location_code = l.location_code;
+
+create stream user_browser_location_car as select ubl.silly, ubl.browsername, ubl.locationname, c.carname from user_browser_location ubl left join cartype c on ubl.CAR_CODE = c.car_code;
+```
+
+
+
+
+
+## Lecture 35: Testing ksqlDB applications
+Testing
+
+```
+cd testing
+
+ksql-test-runner --sql-file ksql-statements.ksql --input-file input.json --output-file output.json
+
+ksql-test-runner --sql-file ksql-statements.ksql --input-file input.json --output-file output.json  | grep  ">>>"
+
+ksql-test-runner --sql-file ksql-statements-enhanced.ksql --input-file input.json --output-file output.json  | grep  ">>>"
+```
+

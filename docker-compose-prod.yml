@@ -58,7 +58,7 @@ services:
   
 
   ksql-server-1:
-    image: confluentinc/cp-ksql-server:${CONF_VER}
+    image: confluentinc/cp-ksqldb-server:${CONF_VER}
     ports:
       - '8088:8088'    
     depends_on:
@@ -76,7 +76,7 @@ services:
       - ./ext:/etc/ksql/ext
 
   ksql-server-2:
-    image: confluentinc/cp-ksql-server:${CONF_VER}
+    image: confluentinc/cp-ksqldb-server:${CONF_VER}
     ports:
       - '28088:8088'    
     depends_on:
